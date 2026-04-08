@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Units
+from Grammar import Bracket, Quote, Colon, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -60,6 +60,30 @@ class TestGrammar(unittest.TestCase):
             doc = ExtendedDoc(self.nlp(test['input']))
             units = Units.initialize_units(doc, doc.sents[0])
             units = Quote(units, verbose=True)
+            self.assertEqual([unit.text() for unit in units], test['output'])
+    
+
+
+    def test_colons(self):
+        tests = [
+            {
+                'input': 'A B C D : 1 2 3 4',
+                'output': ['A', 'B', 'C', 'D', ":", "1 2 3 4"]
+            },
+            {
+                'input': 'A B C D 1 2 3 4:',
+                'output': ['A', 'B', 'C', 'D', '1', '2', '3', '4', ':']
+            },
+            {
+                'input': ':A B C D 1 2 3 4',
+                'output': [':', 'A B C D 1 2 3 4']
+            }
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = Colon(units, verbose=True)
             self.assertEqual([unit.text() for unit in units], test['output'])
 
 

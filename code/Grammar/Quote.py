@@ -44,7 +44,7 @@ class Quote:
         i = 0
         while i < len(units):
             if verbose:
-                print(f"[i={i}] [POS={units[i].span()[0].pos_}] Unit: '{units[i].text()}'")
+                print(f"[i={i}|PoS={units[i].span()[0].pos_}] Unit: '{units[i].text()}'")
                 print(f'Stack: {stack}')
                 print(f'Units: {[unit.text() for unit in units]}')
             
