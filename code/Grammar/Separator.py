@@ -50,11 +50,13 @@ class Separator:
 
     @staticmethod
     def identify(units: List[Unit], verbose=False):
+        if verbose:
+            print(f'In: {[unit.text() for unit in units]}\n\n')
+        
         i = 0
-
         while i < len(units):
             if verbose:
-                print(f"[i={i}|PoS={units[i].span()[0].pos_}{len(units[i].span()) == 2 and f'|nPoS={units[i].span()[1].pos_}'}{i + 1 < len(units) and f'|nUnit={units[i+1].span()}'}] Unit: '{units[i].text()}'")
+                print(f"[i={i}|PoS={units[i].span()[0].pos_}{str('' if len(units[i].span()) != 2 else f'|nPoS={units[i].span()[1].pos_}')}{'' if i + 1 >= len(units) else f'''|nUnit={units[i+1].span()}'''}] Unit: '{units[i].text()}'")
                 print(f'Units: {[unit.text() for unit in units]}\n\n')
 
             # Separator Type: Punctuation
@@ -82,10 +84,13 @@ class Separator:
 
             else:
                 i += 1
-                
+        
+        if verbose:
+            print(f'Out: {[unit.text() for unit in units]}\n\n')
+        
         return units
 
 
-    
+
     def __new__(cls, units: List[Unit], verbose=False):
         return Separator.identify(units, verbose)

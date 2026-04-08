@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Colon, Unit, Units, Separator
+from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, Unit, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -34,8 +34,10 @@ class TestGrammar(unittest.TestCase):
 
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
+
             units = Units.initialize_units(doc, doc.sents[0])
-            units = Bracket(units, verbose=True)
+            units = Bracket(units, verbose=False)
+
             self.assertEqual([unit.text() for unit in units], test['output'])
 
 
@@ -58,8 +60,10 @@ class TestGrammar(unittest.TestCase):
 
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
+
             units = Units.initialize_units(doc, doc.sents[0])
-            units = Quote(units, verbose=True)
+            units = Quote(units, verbose=False)
+
             self.assertEqual([unit.text() for unit in units], test['output'])
     
 
@@ -82,8 +86,10 @@ class TestGrammar(unittest.TestCase):
 
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
+
             units = Units.initialize_units(doc, doc.sents[0])
-            units = Colon(units, verbose=True)
+            units = Colon(units, verbose=False)
+
             self.assertEqual([unit.text() for unit in units], test['output'])
 
 
@@ -99,10 +105,50 @@ class TestGrammar(unittest.TestCase):
 
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
+
             units = Units.initialize_units(doc, doc.sents[0])
-            units = Separator(units, verbose=True)
+            units = Separator(units, verbose=False)
+
             self.assertEqual([unit.text() for unit in units], test['output_text'])
             self.assertEqual([None if not unit.labels else next(iter(unit.labels)) for unit in units], test['output_tags'])
+    
+
+
+    def test_prepositional_phrases(self):
+        tests = [
+            {
+                'input': 'A new railroad is under construction',
+                'output': ['A', 'new', 'railroad', 'is', 'under construction'],
+            },
+            {
+                'input': 'After two trial runs we did it for real',
+                'output': ['After two trial runs', 'we', 'did', 'it', 'for real'],
+            },
+            {
+                'input': 'By the way, John is here',
+                'output': ['By the way', ',', 'John', 'is', 'here'],
+            },
+            {
+                'input': 'The apple trees are in full bearing',
+                'output': ['The', 'apple', 'trees', 'are', 'in full bearing'],
+            },
+            {
+                'input': 'Never tell tales out of school',
+                'output': ['Never', 'tell', 'tales', 'out of school'],
+            },
+            {
+                'input': 'In the picture room',
+                'output': ['In the picture room'],
+            }
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = PrepositionalPhrase(units, verbose=False)
+
+            self.assertEqual([unit.text() for unit in units], test['output'])
     
 
 

@@ -4,6 +4,9 @@ from typing import List
 class Colon:
     @staticmethod
     def identify(units: List[Unit], verbose=False):
+        if verbose:
+            print(f'In: {[unit.text() for unit in units]}\n\n')
+        
         i = 0
         while i < len(units):
             if verbose:
@@ -22,6 +25,9 @@ class Colon:
             
             break
 
+        if verbose:
+            print(f'Out: {[unit.text() for unit in units]}\n\n')
+        
         return units
 
 
