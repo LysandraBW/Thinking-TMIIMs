@@ -7,7 +7,7 @@ class Colon:
         i = 0
         while i < len(units):
             if verbose:
-                print(f"[i={i}] Unit: '{units[i].text()}'")
+                print(f"[i={i}] Unit: '{units[i].text()}'\n\n")
             
             if units[i].lower()[-1] != ":":
                 i += 1

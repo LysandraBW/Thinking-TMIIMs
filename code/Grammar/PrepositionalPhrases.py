@@ -56,9 +56,9 @@ class Prepositional_Phrases(Identify):
                 Unit.I_CLAUSE,
                 Unit.D_CLAUSE,
                 Unit.P_PHRASE,
-                Unit.BREAK,
-                Unit.AND_OR_END,
-                Unit.END
+                Unit.SEP_PUNCT,
+                Unit.SEP_PUNCT_AND_OR,
+                Unit.SEP_PUNCT_CONJ
             ]) or
             
             # 3. Noun
