@@ -24,7 +24,7 @@ class DependentClause:
         
         if verbose:
             print(f"\t\tChecking Unit '{units[i].text()}'")
-            print(f"\t\t\tUnit PoS='{units[i].start().pos_}'")
+            print(f"\t\t\tUnit Starting PoS='{units[i].start().pos_}'")
                 
         if units[i].start().pos_ not in ["NOUN", "PROPN", "PRON"]:
             return False
