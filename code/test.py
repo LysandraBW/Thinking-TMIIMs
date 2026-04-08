@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Units
+from Grammar import Bracket, Quote, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -39,6 +39,29 @@ class TestGrammar(unittest.TestCase):
             self.assertEqual([unit.text() for unit in units], test['output'])
 
 
-        
+
+    def test_quotes(self):
+        tests = [
+            {
+                'input': 'The dog\'s collar was red.',
+                'output': ['The', 'dog', '\'s', 'collar', 'was', 'red', '.']
+            },
+            {
+                'input': 'The \'dog\' had a red collar.',
+                'output': ['The', '\'dog\'', 'had', 'a', 'red', 'collar', '.']
+            },
+            {
+                'input': '"The \'dog\' had a red collar."',
+                'output': ['"The \'dog\' had a red collar."']
+            }
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = Quote(units, verbose=True)
+            self.assertEqual([unit.text() for unit in units], test['output'])
+
+
 if __name__ == "__main__":
     unittest.main()

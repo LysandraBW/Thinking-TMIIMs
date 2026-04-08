@@ -1,25 +1,25 @@
 from .Unit import Unit
-from .Identify import *
 from typing import List
 
-
-class Bracket:
-    MATCHES = {"[": "]",  "(": ")", "—": "—", "{": "}"}
-    OPENING = MATCHES.keys()
-    CLOSING = MATCHES.values()
+class Quote:    
+    @staticmethod
+    def is_opening(units: List[Unit], i: int) -> bool:
+        if i >= len(units):
+            return False
+        
+        s = units[i].lower()[0]
+        return (s == "'" or s == '"') and units[i].span()[0].pos_ == "PUNCT"
     
 
 
     @staticmethod
-    def is_opening(units: List[Unit], i: int) -> bool:
-        return i < len(units) and units[i].lower()[0] in Bracket.OPENING
-
-
-
-    @staticmethod
     def is_closing(units: List[Unit], i: int) -> bool:
-        return i < len(units) and units[i].lower()[0] in Bracket.CLOSING
-
+        if i >= len(units):
+            return False
+        
+        s = units[i].lower()[0]
+        return (s == "'" or s == '"') and units[i].span()[0].pos_ == "PUNCT"
+    
 
 
     @staticmethod
@@ -28,12 +28,12 @@ class Bracket:
             return False
         
         opener = stack[-1]
-        closer = units[i].lower()[0]
+        closer = units[i].lower()
 
-        return Bracket.MATCHES[opener] == closer
+        return opener == closer
     
 
-    
+
     @staticmethod
     def identify(units: List[Unit], verbose=False):
         if verbose:
@@ -44,12 +44,12 @@ class Bracket:
         i = 0
         while i < len(units):
             if verbose:
-                print(f"[i={i}] Unit: '{units[i].text()}'")
+                print(f"[i={i}] [POS={units[i].span()[0].pos_}] Unit: '{units[i].text()}'")
                 print(f'Stack: {stack}')
                 print(f'Units: {[unit.text() for unit in units]}')
             
             # Closing
-            if Bracket.is_closing(units=units, i=i) and Bracket.closes(units=units, i=i, stack=stack):
+            if Quote.is_closing(units=units, i=i) and Quote.closes(units=units, i=i, stack=stack):
                 if verbose:
                     print('\tClose')
                 
@@ -58,7 +58,7 @@ class Bracket:
                 units.pop(i)
             
             # Opening
-            elif Bracket.is_opening(units=units, i=i):
+            elif Quote.is_opening(units=units, i=i):
                 if verbose:
                     print('\tOpen')
                 
@@ -93,7 +93,7 @@ class Bracket:
         
         return units
     
-    
+
 
     def __new__(cls, units: List[Unit], verbose=False):
-        return Bracket.identify(units, verbose)
+        return Quote.identify(units, verbose)
