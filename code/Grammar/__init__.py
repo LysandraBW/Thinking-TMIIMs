@@ -5,4 +5,5 @@ from .Colon import *
 from .Separator import *
 from .DependentClause import *
 from .PrepositionalPhrase import *
+from .IndependentClause import *
 from .Unit import *

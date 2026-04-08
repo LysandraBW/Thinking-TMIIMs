@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, Unit, Units
+from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Unit, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -99,7 +99,7 @@ class TestGrammar(unittest.TestCase):
             {
                 'input': 'A, B, and C; but 1 2 3; it will hear you or see you',
                 'output_text': ['A', ',', 'B', ', and', 'C', '; but', '1', '2', '3', ';', 'it', 'will', 'hear', 'you', 'or', 'see', 'you'],
-                'output_tags': [None, Unit.SEP_PUNCT, None, Unit.SEP_PUNCT_AND_OR, None, Unit.SEP_PUNCT_CONJ, None, None, None, Unit.SEP_PUNCT, None, None, None, None, Unit.SEP_CONJ, None, None]
+                'output_tags': [None, Unit.SEP_PUNCT, None, Unit.SEP_PUNCT_AND_OR, None, Unit.SEP_PUNCT_CCONJ, None, None, None, Unit.SEP_PUNCT, None, None, None, None, Unit.SEP_CCONJ, None, None]
             }
         ]
 
@@ -189,6 +189,52 @@ class TestGrammar(unittest.TestCase):
 
             units = Units.initialize_units(doc, doc.sents[0])
             units = DependentClause(units, separator=',', verbose=True)
+
+            self.assertEqual([unit.text() for unit in units], test['output'])
+        
+
+
+    def test_independent_clause(self):
+        tests = [
+            {
+                'input': 'The movie was fun',
+                'output': ['The movie was fun'],
+            },
+            {
+                'input': 'She was tired, but she stayed anyway',
+                'output': ['She was tired', ', but', 'she stayed anyway'],
+            },
+            {
+                'input': 'The movie was fun and the food was great',
+                'output': ['The movie was fun', 'and', 'the food was great'],
+            },
+            {
+                'input': 'She studied hard, so she passed the exam',
+                # If 'so' was tagged as a CCONJ, the output would be different.
+                # But the en_core_web_sm model tags it as an ADV. So, there's
+                # not much one can do. I don't want to use a bigger model as
+                # I am impatient with loading times.
+                'output': ['She studied hard', ',', 'so she passed the exam'],
+            },
+            {
+                'input': 'He brought an umbrella, for the sky looked threatening',
+                'output': ['He brought an umbrella', ', for', 'the sky looked threatening'],
+            },
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = Separator(units)
+            units = IndependentClause(units, delimiters=[
+                Unit.SEP_SCONJ,
+                Unit.SEP_CCONJ,
+                Unit.SEP_PUNCT, 
+                Unit.SEP_PUNCT_AND_OR, 
+                Unit.SEP_PUNCT_CCONJ,
+                Unit.SEP_PUNCT_SCONJ
+            ], verbose=True)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
 

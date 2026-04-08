@@ -7,7 +7,8 @@ class Unit:
     ITEM = 2
     QUOTE = 3
     SEP_PUNCT = 4
-    SEP_PUNCT_CONJ = 5
+    SEP_PUNCT_CCONJ = 5
+    SEP_PUNCT_SCONJ = 15
     SEP_PUNCT_AND_OR = 6
     COLON = 7
     COLON_BREAK = 8
@@ -16,7 +17,8 @@ class Unit:
     P_PHRASE = 11
     BRACKETS = 12
     FRAGMENT = 13
-    SEP_CONJ = 14
+    SEP_CCONJ = 14
+    SEP_SCONJ = 16
 
 
     def __init__(self, doc: ExtendedDoc, *, labels: int | List[int] | None = None, l: int | None = None, r: int | None =None, children: List["Unit"] | None = None) -> None:
@@ -105,11 +107,13 @@ class Unit:
         if Unit.QUOTE in self.labels:
             labels.append("Quote")
         if Unit.SEP_PUNCT in self.labels:
-            labels.append("Break")
-        if Unit.SEP_PUNCT_CONJ in self.labels:
-            labels.append("End")
+            labels.append("Punctuation")
+        if Unit.SEP_PUNCT_CCONJ in self.labels:
+            labels.append("Punctuation Followed by Coordinating Conjunction")
+        if Unit.SEP_PUNCT_SCONJ in self.labels:
+            labels.append("Punctuation Followed by Subordinating Conjunction")
         if Unit.SEP_PUNCT_AND_OR in self.labels:
-            labels.append("And/End")
+            labels.append("Puncutation Followed by And or Or")
         if Unit.COLON in self.labels:
             labels.append("Colon")
         if Unit.COLON_BREAK in self.labels:
@@ -124,8 +128,10 @@ class Unit:
             labels.append("Brackets")
         if Unit.FRAGMENT in self.labels:
             labels.append("Fragment")
-        if Unit.SEP_CONJ in self.labels:
-            labels.append("Conjunction")
+        if Unit.SEP_CCONJ in self.labels:
+            labels.append("Coordinating Conjunction")
+        if Unit.SEP_SCONJ in self.labels:
+            labels.append("Subordinating Conjunction")
         return ", ".join(labels) or "None"
     
 

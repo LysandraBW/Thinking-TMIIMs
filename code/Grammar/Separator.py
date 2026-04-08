@@ -28,7 +28,7 @@ class Separator:
         return not bool(
             i + 1 < len(units) and 
             units[i+1].size() == 1 and 
-            units[i+1].span()[0].pos_ == "CCONJ"
+            units[i+1].span()[0].pos_ in ["SCONJ", "CCONJ"]
         )
 
     
@@ -43,7 +43,7 @@ class Separator:
         return bool(
             i + 1 < len(units) and 
             units[i+1].size() == 1 and 
-            units[i+1].span()[0].pos_ == "CCONJ"
+            units[i+1].span()[0].pos_ in ["SCONJ", "CCONJ"]
         )
 
 
@@ -66,22 +66,30 @@ class Separator:
             
             # Separator Type: Punctuation -> Conjunction
             elif Separator.conj_follows_punct(units, i):
-                conjunction = units[i+1].start().lower_
+                text = units[i+1].start().lower_
+                speech = units[i+1].start().pos_
 
                 # Adding Specificity
-                if conjunction in ["and", "or"]:
+                if text in ["and", "or"]:
                     units[i].labels.add(Unit.SEP_PUNCT_AND_OR)
-                else:
-                    units[i].labels.add(Unit.SEP_PUNCT_CONJ)
+                elif speech == "CCONJ":
+                    units[i].labels.add(Unit.SEP_PUNCT_CCONJ)
+                elif speech == "SCONJ":
+                    units[i].labels.add(Unit.SEP_PUNCT_SCONJ)
                 
                 units[i].r += 1
                 units.pop(i+1)
             
-            # Separator Type: Conjunction
+            # Separator Type: Coordinating Conjunction
             elif units[i].start().pos_ == "CCONJ":
-                units[i].labels.add(Unit.SEP_CONJ)
+                units[i].labels.add(Unit.SEP_CCONJ)
                 i += 1
-
+            
+            # Separator Type: Subordinating Conjunction
+            elif units[i].start().pos_ == "SCONJ":
+                units[i].labels.add(Unit.SEP_SCONJ)
+                i += 1
+            
             else:
                 i += 1
         

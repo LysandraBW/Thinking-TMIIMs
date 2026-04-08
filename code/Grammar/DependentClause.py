@@ -69,6 +69,7 @@ class DependentClause:
         cond_3 = lower in DependentClause.RELATIVE_NOUNS
         cond_4 = noun_seen and speech == 'VERB' and not list(units[i].start().rights)
         cond_5 = verb_seen and DependentClause.is_last_noun(units, i, verbose=True)
+        cond_6 = units[i].label_has([Unit.SEP_SCONJ, Unit.SEP_PUNCT_SCONJ])
 
         if verbose:
             print(f"\tChecking if '{units[i]}' is End")
@@ -76,9 +77,10 @@ class DependentClause:
             print(f'\t\tCond. 2: {cond_2}')
             print(f'\t\tCond. 3: {cond_3}')
             print(f'\t\tCond. 4: {cond_4}')
-            print(f'\t\tCond. 5: {cond_5}\n')
+            print(f'\t\tCond. 5: {cond_5}')
+            print(f'\t\tCond. 6: {cond_6}\n')
         
-        return cond_1 or cond_2 or cond_3 or cond_4 or cond_5
+        return cond_1 or cond_2 or cond_3 or cond_4 or cond_5 or cond_6
 
 
 
@@ -104,7 +106,8 @@ class DependentClause:
             # Skip if Not Dependent Clause
             if (
                 units[i].lower() not in DependentClause.RELATIVE_NOUNS and 
-                units[i].start().pos_ != "SCONJ"
+                units[i].start().pos_ != "SCONJ" and
+                not units[i].label_has([Unit.SEP_SCONJ, Unit.SEP_PUNCT_SCONJ])
             ):
                 if verbose:
                     print('\tSkip 2\n\n')

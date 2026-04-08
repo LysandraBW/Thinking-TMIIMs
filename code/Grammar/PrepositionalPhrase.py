@@ -51,7 +51,7 @@ class PrepositionalPhrase:
                 Unit.P_PHRASE,
                 Unit.SEP_PUNCT,
                 Unit.SEP_PUNCT_AND_OR,
-                Unit.SEP_PUNCT_CONJ
+                Unit.SEP_PUNCT_CCONJ
             ]) or
             
             # 3. Noun
