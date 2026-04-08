@@ -10,14 +10,12 @@ class PrepositionalPhrase:
     # we encounter.
     @staticmethod
     def is_last_noun(units: List[Unit], i: int):
-        speech = units[i].start().pos_
-
         if bool(
             # 1. End
             i >= len(units) or 
             
             # 2. Noun
-            speech not in [
+            units[i].start().pos_ not in [
                 "NOUN", 
                 "PROPN", 
                 "PRON"
@@ -31,7 +29,7 @@ class PrepositionalPhrase:
                 units[i+1].size() == 1 and 
                 (
                     units[i+1].start().pos_ not in ["NOUN", "PROPN","PART"] or
-                    units[i+1].start().lower_ in Dependent_Clauses.RELATIVE_NOUNS
+                    units[i+1].start().lower_ in DependentClause.RELATIVE_NOUNS
                 )
             )
         )
@@ -100,6 +98,7 @@ class PrepositionalPhrase:
             # are left in the unit?
             # I'm going to comment it out to see.
             # noun_seen = False
+            # TODO
             while not PrepositionalPhrase.is_end(units, i+1):
                 # noun_seen = noun_seen or units[i+1].start().pos_ in [
                 #     "NOUN", 
@@ -121,7 +120,7 @@ class PrepositionalPhrase:
             if bool(
                     units[i+1].size() == 1 and 
                     units[i+1].span()[0].pos_ in ["NOUN", "PROPN", "PRON", "ADJ", "VERB"] and 
-                    units[i+1].lower() not in Dependent_Clauses.RELATIVE_NOUNS
+                    units[i+1].lower() not in DependentClause.RELATIVE_NOUNS
                 ):
                 units[i].r = units[i+1].r
                 units.pop(i+1)

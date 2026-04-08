@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, Unit, Units
+from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, Unit, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -150,6 +150,47 @@ class TestGrammar(unittest.TestCase):
 
             self.assertEqual([unit.text() for unit in units], test['output'])
     
+
+
+    def test_dependent_clause(self):
+        tests = [
+            {
+                'input': 'We have an umbrella because it is raining',
+                'output': ['We', 'have', 'an', 'umbrella', 'because it is raining'],
+            },
+            {
+                'input': 'Because it is raining, we have an umbrella',
+                'output': ['Because it is raining', ',', 'we', 'have', 'an', 'umbrella'],
+            },
+            {
+                'input': 'The movie that we watched last night was fun.',
+                'output': ['The', 'movie', 'that we watched last night', 'was', 'fun', '.'],
+            },
+            {
+                'input': 'The man who lives next door is a doctor',
+                'output': ['The', 'man', 'who lives next door', 'is', 'a', 'doctor'],
+            },
+            {
+                'input': 'What you said surprised me',
+                'output': ['What you said', 'surprised', 'me'],
+            },
+            {
+                'input': 'If it rains, we\'ll stay inside',
+                'output': ['If it rains', ',', 'we', "'ll", 'stay', 'inside'],
+            },
+            {
+                'input': 'She called after she arrived.',
+                'output': ['She', 'called', 'after she arrived', '.']
+            }
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = DependentClause(units, separator=',', verbose=True)
+
+            self.assertEqual([unit.text() for unit in units], test['output'])
 
 
 

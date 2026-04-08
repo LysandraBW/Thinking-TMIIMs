@@ -3,6 +3,6 @@ from .Bracket import *
 from .Identifier import *
 from .Colon import *
 from .Separator import *
+from .DependentClause import *
 from .PrepositionalPhrase import *
-
 from .Unit import *
