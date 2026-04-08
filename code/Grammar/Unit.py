@@ -22,8 +22,8 @@ class Unit:
     def __init__(self, doc: ExtendedDoc, *, labels: int | List[int] | None = None, l: int | None = None, r: int | None =None, children: List["Unit"] | None = None) -> None:
         self.doc = doc
         self.labels = set() if not labels else set([labels]) if not isinstance(labels, list) else set(labels)
-        self.l = l or -1
-        self.r = r or -1
+        self.l = -1 if l is None else l
+        self.r = -1 if r is None else r
         self.children = children or []
     
     
