@@ -32,6 +32,7 @@ class Entity(TypedDict):
 class ResolveEntityInstances:
     def __init__(self, doc: ExtendedDoc) -> None:
         self.doc = doc
+        self.conn = connect()
     
 
     def find_substitutions(self, ents: List[Span]) -> Dict[str, List[str]]:
@@ -89,7 +90,7 @@ class ResolveEntityInstances:
             if start and token.text == ")":
                 # Spans in Parentheses
                 tracked_spans = set()
-                tracked_spans.update(self.doc.doc[i] for i in range(start.i + 1, token.i) if self.doc.doc[i] in token_to_ent)
+                tracked_spans.update(token_to_ent[self.doc.doc[i]] for i in range(start.i + 1, token.i) if self.doc.doc[i] in token_to_ent)
 
                 # Span to Left of Parentheses
                 token_k = start.i != 0 and start.nbor(-1)
@@ -339,7 +340,7 @@ class ResolveEntityInstances:
         return self.merge_linked(links, ents)
 
 
-    def merge_by_external_subs(self, ents: List[Entity]) -> List[Entity]:
+    def merge_by_external_subs(self, ents: List[Entity], verbose=False) -> List[Entity]:
         links = {i: set() for i in range(len(ents))}
         
         i = 0
@@ -365,19 +366,22 @@ class ResolveEntityInstances:
                     
                     # We do not want to merge two different species because of a
                     # similar ancestor. Alas, the 'taxa' group cannot have any species.
-                    if l1 == 'taxa' and ents[i]['taxonomic']:
+                    if l1 in ['taxa', 'scientific'] and ents[i]['taxonomic']:
                         continue
 
-                    if l2 == 'taxa' and ents[j]['taxonomic']:
+                    if l2 in ['taxa', 'scientific'] and ents[j]['taxonomic']:
                         continue
-
-                    subs_mapped_a: Dict[str, Set[str]] = ents[i]['subs_mapped']
-                    subs_mapped_b: Dict[str, Set[str]] = ents[j]['subs_mapped']
-
-                    A_subs = set().union(*[subs_mapped_a[a] for a in A if subs_mapped_a[a]]) or A
-                    B_subs = set().union(*[subs_mapped_b[b] for b in B if subs_mapped_b[b]]) or B
                     
+                    A_subs = set().union(*[ents[i]['subs_mapped'][a] for a in A if ents[i]['subs_mapped'][a]]) or A
+                    B_subs = set().union(*[ents[j]['subs_mapped'][b] for b in B if ents[j]['subs_mapped'][b]]) or B
+                                        
                     if not A_subs.isdisjoint(B_subs):
+                        if verbose:
+                            print(f'({l1} v. {l2}) {i} and {j} are Related via Substitutions')
+                            print(f'\t{i}: {A}')
+                            print(f'\t{j}: {B}')
+                            print(f'\t{i}\'s Substitutions: {A_subs}')
+                            print(f'\t{j}\'s Substitutions: {B_subs}')
                         links[i].add(j)
                         links[j].add(i)
                         found = True
@@ -389,7 +393,11 @@ class ResolveEntityInstances:
 
                     for a in A:
                         for b in B:
-                            if names_related(a, b):
+                            if names_related(a, b, self.conn):
+                                if verbose:
+                                    print(f'{i} and {j} are Related via Substitutions')
+                                    print(f'\t{i}: {a}')
+                                    print(f'\t{j}: {b}')
                                 links[i].add(j)
                                 links[j].add(i)
                                 found = True
@@ -443,7 +451,7 @@ class ResolveEntityInstances:
             print()
             print()
 
-        ents_res = self.merge_by_external_subs(ents_res)
+        ents_res = self.merge_by_external_subs(ents_res, verbose=verbose)
         if verbose:
             print('Group by External Subs')
             for g_i, group in enumerate(ents_res):

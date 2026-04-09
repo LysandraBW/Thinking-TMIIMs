@@ -215,6 +215,8 @@ all_names = load_data(Path(__file__).parent / "../../data/NamesAll.pickle", lamb
 print(f'# of Names: {len(all_names)}\n')
 
 
+conn.close()
+
 
 # --------- #
 # Functions #
@@ -279,8 +281,13 @@ bacteria_kingdoms = {
 
 
 
+def connect():
+    return sqlite3.connect(Path(__file__).parent / '../../data/col.db')
+
+
+
 @lru_cache(maxsize=128)
-def names_related(s1: str, s2: str) -> bool:
+def names_related(s1: str, s2: str, conn: sqlite3.Connection) -> bool:
     buffer = []
 
     s1 = s1.lower()
