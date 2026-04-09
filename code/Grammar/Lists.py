@@ -1,8 +1,5 @@
-from typing import Callable, Any, Tuple
-from Identify import *
-from _.ExtendedDoc import ExtendedDoc
-from _.Grammar.Unit import ExtendedDoc, List, Unit
-
+from typing import Callable, Any, List, Tuple
+from .Unit import Unit
 
 
 def find(elements: List[Any], condition: Callable[[Any], bool]) -> Any:
@@ -30,28 +27,23 @@ def find_all(elements: List[Any], condition: Callable[[Any], bool]) -> List[Any]
 
 
 
-class Lists(Identify):
+class Lists:
     NOUNS = ["NOUN", "PRON", "PROPN"]
-    ENCLOSURES = {
+    ENCLOSED = {
         "[": "]",
         "{": "}",
         "(": ")",
         "\"": "\""
     }
 
-    OPENING = set(ENCLOSURES.keys())
-    CLOSING = set(ENCLOSURES.values())
-
-
-
-    def __init__(self, doc: ExtendedDoc, units: List[Unit], enclosures: List[Unit]) -> None:
-        super().__init__(doc, units)
-        self.enclosures = enclosures
+    OPENING = set(ENCLOSED.keys())
+    CLOSING = set(ENCLOSED.values())
 
 
     
-    def is_stop(self, unit: Unit) -> bool:
-        is_break = Unit.BREAK in unit.labels and unit.lower()[0] == self.separator
+    @staticmethod
+    def is_stop(unit: Unit, separator: str) -> bool:
+        is_break = Unit.SEP_PUNCT in unit.labels and unit.lower()[0] == separator
         is_clause = unit.label_has([
             Unit.I_CLAUSE, 
             Unit.D_CLAUSE, 
@@ -59,29 +51,25 @@ class Lists(Identify):
             Unit.COLON,
             Unit.COLON_BREAK
         ])
-        return bool(is_break or is_clause)
+
+        return is_break or bool(is_clause)
 
 
     
-    def find_lists(self, separator: str):
-        self.separator = separator
-        
-        lists: List[List[Any]] = [
+    @staticmethod
+    def find_lists(units: List[Unit], separator: str, verbose=False):
+        lists: Any = [
+            # A single list
             [
+                # An interval representing an item within a list
                 [None, None]
             ]
         ]
 
-        # print(f"find_lists")
-        # print(f"Units:")
-        # for i, unit in enumerate(self.units):
-        #     print(f"{i}, {unit}")
+        if verbose:
+            print(f"\nFind Lists\nIn Units: {[unit.text() for unit in units]}")
         
-        
-        stack = []
-        stack_pass = False
-
-        text = " ".join([unit.lower() for unit in self.units])
+        text = " ".join([unit.lower() for unit in units])
 
         # It has been a while since I've looked at my code.
         # It seems that I'm checking whether the units are enclosed
@@ -90,42 +78,50 @@ class Lists(Identify):
         opening_characters = [char for char in text if char in Lists.OPENING]
         closing_characters = [char for char in text if char in Lists.CLOSING]
 
+        # In Enclosure
+        in_enclosure = False
+
         if bool(
             len(opening_characters) == 1 and 
             len(closing_characters) == 1 and
             text[+0] in opening_characters and 
             text[-1] in closing_characters and
-            Lists.ENCLOSURES[text[0]] == text[-1]
+            Lists.ENCLOSED[text[0]] == text[-1]
         ):
-            stack_pass = True
-
-        # print(f"Text: {text}")
-        # print(f"Stack Pass: {stack_pass}")
+            in_enclosure = True
+        
+        if verbose:
+            print(f'Opening Characters: {opening_characters}')
+            print(f'Closing Characters: {closing_characters}')
+            print(f"Text: {text}")
+            print(f"In Enclosure: {in_enclosure}")
         
         i = 0
-        while i < len(self.units):
-            unit = self.units[i]
+        stack = []
+        
+        while i < len(units):
+            unit = units[i]
 
             # If we're not in an enclosure,
             # we check whether the current unit is an opening or closing.
             # If it's an opening, we add it to the stack. It seems that I'm handling
-            # enclosures within a potential list. Why would I need this though? Perhaps,
+            # an enclosure within a potential list. Why would I need this though? Perhaps,
             # the entire list's content would be added within the stack?
-            if not stack_pass:
+            if not in_enclosure:
                 if unit.lower() in Lists.OPENING:
                     stack.append(unit.lower())
-                elif stack and unit.lower() in Lists.CLOSING and Lists.ENCLOSURES[stack[-1]] == unit.lower():
+                if unit.lower() in Lists.CLOSING and stack and Lists.ENCLOSED[stack[-1]] == unit.lower():
                     stack.pop()
             
+            # An empty list starts out with
+            # [None, None]. Keep in mind that lists
+            # holds a list of lists of lists (intervals).
             opened = lists[-1][0] != [None, None]
 
             # Actions
-            close_list = unit.label_has([Unit.AND_OR_END]) and unit.lower()[0] == separator
-            close_item = unit.label_has([Unit.BREAK]) and unit.lower()[0] == separator
-            remove_list = unit.label_has([
-                Unit.COLON, 
-                Unit.COLON_BREAK
-            ])
+            close_list = unit.lower()[0] == separator and unit.has_label(Unit.SEP_PUNCT_AND_OR)
+            close_item = unit.lower()[0] == separator and unit.has_label(Unit.SEP_PUNCT)
+            scrap_list = unit.has_label(Unit.COLON, Unit.COLON_BREAK)
         
             # Close List
             # We only close the list if we're not 
@@ -137,123 +133,188 @@ class Lists(Identify):
                     lists[-1] = [[None, None]]
                     i += 1
                     continue
-                    
+                
+                # So, we're at the end of the list.
+                # So, we need to find the last item.
+                # So, so, so.
+
                 # Find the L Index of Last Item
+                # This doesn't require any further thinking,
+                # the last item's start would be immediately
+                # after the comma, unless the writer is mean.
                 last_item_l = i + 1
 
-                # Find the R Index of Last Item
+                # Finding the R Index of Last Item
+                # We are attempting to bound the last item's
+                # right index. Why? Imagine:
+                # The grass is green, the sun is yellow, and the sky is blue, but you are red.
+                # We know the last item's left index comes immediately after
+                # the 'and'. However, where does it end (i.e., what is its right index)?
+                # We don't know, but we can bound it by finding the next stop, which
+                # would be some sort of separator. In this case, it would be ', but'. 
                 last_item_r = last_item_l
-                
-                distance_from_next_stop = find_index(self.units[last_item_l:], lambda e: self.is_stop(e))
+                distance_from_next_stop = find_index(units[last_item_l:], lambda e: Lists.is_stop(e, separator))
+
                 # We extend the last item up until it
                 # reaches the next stop.
                 if distance_from_next_stop > 0:
                     last_item_r += distance_from_next_stop - 1
-                # No Stop Found
+                # If there's no stop stopping us, we extend
+                # the last item to the end of the units.
                 elif distance_from_next_stop == -1:
-                    last_item_r = len(self.units) - 1
+                    last_item_r = len(units) - 1
 
                 # Add Last Item
                 lists[-1].append([last_item_l, last_item_r])
+
+                # Add New List
                 lists.append([[None, None]])
                 i += 1
 
             # Close Item
             elif not stack and opened and close_item:
+                # I know what you're thinking: if this
+                # is an interval, why is the left number
+                # greater than the right number? Well,
+                # refer to the else-block. In the next
+                # iteration, if we don't close the item,
+                # close the list, or scrap the list, we
+                # would continue the new item.
+                # However, we're planning ahead. We're
+                # not actually at this new item yet,
+                # we're just setting the stage. There might
+                # not even be a new item. So, we set its
+                # left number, but not the right.
+                # If we actually reach the new item,
+                # the right number will be updated and
+                # we'll have everything in order. However,
+                # if there is no new item, then this would
+                # be a sign that this is a bad item and
+                # that we need to remove it.
+
+                # Add New Item
                 lists[-1].append([i + 1, i])
                 i += 1
                 
-            # Remove List
-            elif not stack and opened and remove_list:
+            # Scrap List
+            elif not stack and opened and scrap_list:
+                # We're overwriting whatever list was
+                # previously being built with a new list.
                 lists[-1] = [[None, None]]
                 i += 1
             
             # Continue Item
             else:
+                # This is the first item,
+                # so no preparation took
+                # place to warrant the else.
                 if not opened:
                     lists[-1][0] = [i, i]
                 else:
                     lists[-1][-1][1] += 1
                 i += 1
-            
-        # print(f"1. Lists: {lists}")
+
+        if verbose:
+            print(f"1. Lists: {lists}")
+        
         # If we reach the end of the list and the last
         # list is invalid (< 3 items), we remove it.
-        if bool(
-            lists and len(lists[-1]) < 3 or 
+        if lists and bool(
+            len(lists[-1]) < 3 or 
             (
-                lists and
-                not find(self.units[lists[-1][0][0]:], lambda e: e.label_has([Unit.AND_OR_END]) and e.lower()[0] == separator)
+                not find(units[lists[-1][0][0]:], lambda e: e.has_label(Unit.SEP_PUNCT_AND_OR) and e.lower()[0] == separator)
             )
         ):
             lists.pop()
         
-        # print(f"2. Lists: {lists}")
+        if verbose:
+            print(f"2. Lists: {lists}")
+        
         # In each item, we look for pairs (e.g. X and Y).
         # We only handle one conjunction.
         num_lists = len(lists)
-        for i, lst in enumerate(lists):
+        for i, opened_list in enumerate(lists):
             if i >= num_lists:
                 break
             
-            for l, r in lst:
-                tokens = Unit.tokens(units=self.units[l:r+1])
+            for l, r in opened_list:
+                tokens = Unit.tokens(units=units[l:r+1])
                 if not tokens:
                     continue
+
                 conj = find_all(tokens, lambda t: Unit.is_conjunction(t))
                 if len(conj) == 1:
                     lists.append([[l, r]])
         
-        # print(f"3. Lists: {lists}")
+        if verbose:
+            print(f"3. Lists: {lists}")
+        
         # If there's no lists at all, we can take advantage
-        # of lax rules.
+        # of lax rules. So, we're basically doing everything 
+        # we did initially, again. Is there a better way to 
+        # do this? Me in the past did not know and me in the
+        # present does not feel like knowing.
         if not lists:
             stack = []
-            lst: List[List[Any]] = [[None, None]]
-            i = 0
+            opened_list: List[List[Any]] = [[None, None]]
             conj_seen = False
-            while i < len(self.units):
-                unit = self.units[i]
+            
+            i = 0
+            while i < len(units):
+                unit = units[i]
 
+                # It appears that we're also handling
+                # enclosures in this version?
                 if unit.lower() in Lists.OPENING:
                     stack.append(unit.lower())
-    
-                if stack and unit.lower() in Lists.CLOSING and Lists.ENCLOSURES[stack[-1]] == unit.lower():
+                
+                if unit.lower() in Lists.CLOSING and stack and Lists.ENCLOSED[stack[-1]] == unit.lower():
                     stack.pop()
                       
-                if unit.label_has([Unit.CONJ]):
+                if unit.has_label(Unit.SEP_CCONJ):
                     if not conj_seen:
                         conj_seen = True
-                    elif lst != [[None, None]]:
-                        lst[-1][1] = i - 1
-                        lists.append(lst)
-                        lst = [[i - 1, i]]
+                    # If we've already seen a conjunction,
+                    # we end the opened list.
+                    elif opened_list != [[None, None]]:
+                        opened_list[-1][1] = i - 1
+                        lists.append(opened_list)
+                        opened_list = [[i - 1, i]]
                 else:
-                    if lst == [[None, None]]:
-                        lst = [[i, i]]
+                    # Open a List
+                    if opened_list == [[None, None]]:
+                        opened_list = [[i, i]]
+                    # Continue Item
                     else:
-                        lst[-1][1] = i
+                        opened_list[-1][1] = i
                 
                 i += 1
             
-            if lst != [[None, None]] and conj_seen:
-                lists.append(lst)
-        # print(f"4. Lists: {lists}")
+            if opened_list != [[None, None]] and conj_seen:
+                lists.append(opened_list)
+        
+        if verbose:
+            print(f"4. Lists: {lists}")
+        
         # Here we remove duplicates, I'm not sure if duplicates still
         # occur, I observed them once, but this is here in case.
-        # Note: I could do a cheeky list(set(...)), at least I think.
         i = 0
         while i < len(lists):
             if lists[i] in lists[i+1:]:
                 lists.pop(i)
             else:
                 i += 1
-        # print(f"5. Lists: {lists}")
-        # Remove Invalid Lists
+        
+        if verbose:
+            print(f"5. Lists: {lists}")
+        
+        # Delete Invalid Lists
         i = 0
         while i < len(lists):
-            # The list contains one item and that item only contains one
-            # token, or the list has two items.
+            # We delete the list if
+            # (1) it contains one item and that item only contains one
+            # token; or (2) the list with one item has no ANDs or ORs; 
+            # or (3) it has two items.
             if bool(
                 (
                     len(lists[i]) == 1 and 
@@ -262,19 +323,29 @@ class Lists(Identify):
                 (
                     len(lists[i]) == 1 and
                     # An AND/OR is required.
-                    not [unit for unit in self.units[lists[i][0][0]:lists[i][0][1]+1] if "and" in unit.lower() or "or" in unit.lower()]
+                    not [unit for unit in units[lists[i][0][0]:lists[i][0][1]+1] if unit.lower() in ["and", "or"]]
                 ) or
                 len(lists[i]) == 2
             ):
                 lists.pop(i)
             else:
                 i += 1
-        # print(f"6. Lists: {lists}")
+        
+        if verbose:
+            print(f"6. Lists: {lists}")
+        
         return lists
 
 
     
-    def clean_lists(self, lists):
+    @staticmethod
+    def clean_lists(lists, verbose=False):
+        # Sort Lists
+        # This wasn't here before, I'm wondering
+        # if it's not needed?
+        # I feel like it would be, since we're
+        # handling overlapping bounds.
+        lists = sorted(lists, key=lambda l: l[0])
         overlaps = []
 
         i = 0
@@ -282,15 +353,23 @@ class Lists(Identify):
             a = lists[i]
             b = lists[i+1]
                   
+            # Doesn't Overlap
             if a[-1] != b[0]:
                 i += 1
                 continue
-
+            
+            # Skip Short Lists
+            # Why? Well, some of them may
+            # be a nested list. Other than that,
+            # I guess I'm assuming they won't overlap?
+            # What do I mean by overlapping? I don't
+            # see any greater or less than symbols.
             if len(a) <= 1 or len(b) <= 1:
                 i += 1
                 continue
 
             # No Way to Split
+            # If there's no way to split it, we remove it.
             if a[-1][1] - a[-1][0] == 0 and b[0][1] - b[0][0] == 0:
                 overlaps.extend([i, i + 1])
                 i += 2
@@ -299,14 +378,27 @@ class Lists(Identify):
                 b[0][0] = b[0][1]
                 i += 2
 
-        lists = [l for i, l in enumerate(lists) if i not in overlaps]
-        # print(f"7. Lists: {lists}")
+        lists = [lst for i, lst in enumerate(lists) if i not in overlaps]
+        
+        if verbose:
+            print(f"7. Lists: {lists}")
+        
         return lists
 
 
     
-    def expand_noun(self, tokens, start, direction):
-        for span in [*self.doc.doc.noun_chunks, *self.doc.doc.ents]:
+    # If I remember correctly, this is to expand an item's
+    # 'area'. The first item would be expanded to the left,
+    # and the last item would be expanded to the right -- hence,
+    # the direction parameter.
+    # spans: A list of spans wherein a span is seen as having 
+    # already expanded tokens.
+    # tokens: This seems to be the set of tokens we can expand into.
+    # start: Where you're starting from in the set of tokens.
+    # direction: Whether you're expanding to the left or right.
+    @staticmethod
+    def expand_noun(spans, tokens, start, direction):
+        for span in spans:
             tokens_i = [t.i for t in span]
             if tokens[start].i in tokens_i:
                 while start >= 0 and start < len(tokens) and tokens[start].i in tokens_i:
@@ -318,10 +410,11 @@ class Lists(Identify):
 
 
     
-    def char_bound_list(self, lst):
+    @staticmethod
+    def char_bound_list(units: List[Unit], lst, enclosed):
         # We bound each item according to characters or a speech.
         # We find these bounds from the "base item", the second to last item.
-        base_tokens = Unit.tokens(units=self.units[lst[-2][0]:lst[-2][1]+1])
+        base_tokens = Unit.tokens(units=units[lst[-2][0]:lst[-2][1]+1])
         
         if not base_tokens:
             raise Exception
@@ -351,7 +444,7 @@ class Lists(Identify):
             l = item[0]
             r = item[1]
             
-            tokens = Unit.tokens(units=self.units[l:r+1])
+            tokens = Unit.tokens(units=units[l:r+1])
             if not tokens:
                 raise Exception
             
@@ -359,11 +452,11 @@ class Lists(Identify):
             # bounded. If not, we cannot bound the list.
             if tokens[0].lower_ != l_bound:
                 if len(inner_items) - i - 1 >= 2:
-                    return self.bound_list(lst[i+2:])
+                    return Lists.bound_list(units, lst[i+2:], enclosed)
                 return None
         
         # Check for L Bound in Starting Item
-        start_tokens = Unit.tokens(units=self.units[lst[0][0]:lst[0][1]+1])
+        start_tokens = Unit.tokens(units=units[lst[0][0]:lst[0][1]+1])
         if not start_tokens:
             raise Exception
         
@@ -376,16 +469,16 @@ class Lists(Identify):
             # If the list is greater than 4 items, we can
             # cut off the starting item, and try again.
             if len(inner_items) >= 2:
-                return self.bound_list(lst[1:])
+                return Lists.bound_list(units, lst[1:], enclosed)
             return None
 
         # If the first of the start tokens is a noun,
         # there may be more to include.
         if start_tokens[start_l].pos_ in Lists.NOUNS:
-            start_l = self.expand_noun(start_tokens, start_l, -1)
+            start_l = Lists.expand_noun([*units[0].doc.doc.noun_chunks, units[0].doc.doc.ents], start_tokens, start_l, -1)
         
         # Check for R Bound in Ending Item
-        end_tokens = Unit.tokens(units=self.units[lst[-1][0]:lst[-1][1]+1])
+        end_tokens = Unit.tokens(units=units[lst[-1][0]:lst[-1][1]+1])
         if not end_tokens:
             raise Exception
         
@@ -400,30 +493,34 @@ class Lists(Identify):
         # If the last of the end tokens is a noun, there may be more
         # to include.
         if end_tokens[end_r].pos_ in Lists.NOUNS:
-            end_r = self.expand_noun(end_tokens, end_r, 1)
+            end_r = Lists.expand_noun([*units[0].doc.doc.noun_chunks, units[0].doc.doc.ents], end_tokens, end_r, 1)
         
         # Create List
-        unit_list = Unit(self.doc, labels=Unit.LIST, l=start_tokens[start_l].i, r=end_tokens[end_r].i)
+        unit_list = Unit(units[0].doc, labels=Unit.LIST, l=start_tokens[start_l].i, r=end_tokens[end_r].i)
         
         # Add Starting and Ending Items
         unit_list.children.extend([
-            Unit(self.doc, labels=Unit.ITEM, l=start_tokens[start_l].i, r=start_tokens[-1].i),
-            Unit(self.doc, labels=Unit.ITEM, l=end_tokens[0].i, r=end_tokens[end_r].i)
+            Unit(units[0].doc, labels=Unit.ITEM, l=start_tokens[start_l].i, r=start_tokens[-1].i),
+            Unit(units[0].doc, labels=Unit.ITEM, l=end_tokens[0].i, r=end_tokens[end_r].i)
         ])
         
         for item in lst[1:-1]:
-            tokens = Unit.tokens(units=self.units[item[0]:item[1]+1])
+            tokens = Unit.tokens(units=units[item[0]:item[1]+1])
             if not tokens:
                 raise Exception
-            unit_item = Unit(self.doc, labels=Unit.ITEM, l=tokens[0].i, r=tokens[-1].i)
+            unit_item = Unit(units[0].doc, labels=Unit.ITEM, l=tokens[0].i, r=tokens[-1].i)
             unit_list.children.append(unit_item)
 
         return unit_list
 
 
     
-    def char_bound_pair(self, pair):
-        tokens = Unit.tokens(units=self.units[pair[0][0]:pair[0][1]+1])
+    # I cannot remember the difference between this
+    # and bound_pair. It seems that we're comparing
+    # the literal text as a last ditch attempt.
+    @staticmethod
+    def char_bound_pair(units: List[Unit], pair):
+        tokens = Unit.tokens(units=units[pair[0][0]:pair[0][1]+1])
         if not tokens:
             raise Exception
         
@@ -431,60 +528,73 @@ class Lists(Identify):
         num_tokens = len(tokens)
         
         # Middle
-        middle = find_index(tokens, lambda t: Unit.is_conjunction(t))
+        m = find_index(tokens, lambda t: Unit.is_conjunction(t))
 
         # Bound L by R Token Characters
-        l = middle - 1
-        while l >= 0 and tokens[l].lower_ != tokens[middle + 1].lower_:
+        l = m - 1
+        while l >= 0 and tokens[l].lower_ != tokens[m + 1].lower_:
             l -= 1
 
         if l < 0:
             return None
 
         # Bound R by L Token Speech
-        r =  middle + 1
-        while r < num_tokens and not Unit.same_speech(tokens[middle-1].pos_, tokens[r].pos_):
+        r =  m + 1
+        while r < num_tokens and not Unit.same_speech(tokens[m-1].pos_, tokens[r].pos_):
             r += 1
         
         if r >= num_tokens:
             return None
         
-        pair = Unit(self.doc, labels=Unit.LIST, l=tokens[l].i, r=tokens[r].i, children=[
-            Unit(self.doc, labels=Unit.ITEM, l=tokens[l].i, r=tokens[middle-1].i), 
-            Unit(self.doc, labels=Unit.ITEM, l=tokens[middle+1].i, r=tokens[r].i)
+        doc = units[0].doc
+        pair = Unit(doc, labels=Unit.LIST, l=tokens[l].i, r=tokens[r].i, children=[
+            Unit(doc, labels=Unit.ITEM, l=tokens[l].i, r=tokens[m-1].i), 
+            Unit(doc, labels=Unit.ITEM, l=tokens[m+1].i, r=tokens[r].i)
         ])
 
         return pair
 
 
     
-    def bound_list(self, lst):
-        # Base Item (2nd to Last Item) Tokens
-        # This item is already bounded by the
-        # left and right sides, which is useful.
-        base_tokens = Unit.tokens(units=self.units[lst[-2][0]:lst[-2][1]+1])
+    @staticmethod
+    def bound_list(units: List[Unit], lst, enclosed: List[Unit]):
+        # Base Tokens
+        # The 2nd to last item is already bounded by the
+        # left and right sides, so we use it as
+        # a reference for the types of tokens we're
+        # looking for.
+
+        # The 2nd item is also bounded; you could use
+        # different items. Perhaps, I should use all
+        # bounded items? Eh, I'm only handling simple
+        # situations.
+        base_tokens = Unit.tokens(units=units[lst[-2][0]:lst[-2][1]+1]) # Adding a 1 because the intervals are inclusive
         if not base_tokens:
             raise Exception
-        
         num_base_tokens = len(base_tokens)
         
         # Speech Bounds
-        speech = ["NOUN", "PROPN", "PRON", "VERB"]
-        adjectives = ["ADJ", "ADV", "NUM", "ADP", "AUX"]
+        speech_noun_verb = ["NOUN", "PROPN", "PRON", "VERB"]
+        speech_adjectives = ["ADJ", "ADV", "NUM", "ADP", "AUX"]
         
-
         # Find L Bound
+        # We start from the left and look for
+        # any of the above speeches.
         l_bound = []
         for i in range(0, num_base_tokens):
-            if base_tokens[i].pos_ in speech:
+            if base_tokens[i].pos_ in speech_noun_verb:
                 l_bound = [base_tokens[i].pos_]
                 break
-            elif base_tokens[i].pos_ in adjectives:
+
+            # We have some more searching to do. If the
+            # adjective used for a noun? A proper noun?
+            # We continue looking to answer this question.
+            elif base_tokens[i].pos_ in speech_adjectives:
                 l_bound = [base_tokens[i].pos_]
 
                 j = i + 1
                 while j < num_base_tokens:
-                    if base_tokens[j].pos_ in speech:
+                    if base_tokens[j].pos_ in speech_noun_verb:
                         l_bound.append(base_tokens[j].pos_)
                         break
                     j += 1
@@ -496,17 +606,20 @@ class Lists(Identify):
 
         
         # Find R Bound
+        # Same process as before, but we start from
+        # the right and work our way to the left.
         r_bound = []
         for i in range(num_base_tokens - 1, -1, -1):
-            if base_tokens[i].pos_ in speech:
-                r_bound = [base_tokens[i].pos_]
+            if base_tokens[i].pos_ in speech_noun_verb:
+                r_bound.append(base_tokens[i].pos_)
                 break
-            elif base_tokens[i].pos_ in adjectives:
-                r_bound = [base_tokens[i].pos_]
+
+            elif base_tokens[i].pos_ in speech_adjectives:
+                r_bound.append(base_tokens[i].pos_)
 
                 j = i - 1
                 while j >= 0:
-                    if base_tokens[j].pos_ in speech:
+                    if base_tokens[j].pos_ in speech_noun_verb:
                         r_bound.append(base_tokens[j].pos_)
                         break
                     j -= 1
@@ -527,16 +640,19 @@ class Lists(Identify):
             l = item[0]
             r = item[1]
             
-            item_tokens = Unit.tokens(units=self.units[l:r+1])
+            item_tokens = Unit.tokens(units=units[l:r+1])
             if not item_tokens:
                 raise Exception
             
             item_speech = [token.pos_ for token in item_tokens]
 
             # Must be Homogeneous
-            if "VERB" not in item_speech and verb_seen:
+            # So, we've seen a verb in a previous item, and there's
+            # no verb in this item. This is problematic, so we
+            # cut off the list, if possible.
+            if ("VERB" not in item_speech and verb_seen) or ("VERB" in item_speech and not verb_seen and i != 0):
                 if len(inner_items) >= 2:
-                    return self.bound_list(lst[1:])  
+                    return Lists.bound_list(units, lst[1:], enclosed)  
                 else:
                     return None
             elif "VERB" in item_speech:
@@ -548,12 +664,12 @@ class Lists(Identify):
                 # item has a chance. If it does, that becomes
                 # the list.
                 if len(inner_items) - i + 1 >= 2:
-                    return self.bound_list(lst[i+2:])
+                    return Lists.bound_list(units, lst[i+2:], enclosed)
                 return None
         
 
         # Check Starting Item
-        start_tokens = Unit.tokens(units=self.units[lst[0][0]:lst[0][1]+1])
+        start_tokens = Unit.tokens(units=units[lst[0][0]:lst[0][1]+1])
         if not start_tokens:
             raise Exception
         
@@ -563,15 +679,17 @@ class Lists(Identify):
 
         if start_l < 0:
             if len(inner_items) >= 2:
-                return self.bound_list(lst[1:])
+                return Lists.bound_list(units, lst[1:], enclosed)
             return None
 
         # Adjust Starting Item
+        # ADJs, NUMs, and ADVs can still be a part of a noun.
+        # So, I'm including them here.
         if set(l_bound).intersection(["ADJ", "NUM", "ADV", *Lists.NOUNS]):
-            start_l = self.expand_noun(start_tokens, start_l, -1)
+            start_l = Lists.expand_noun([*units[0].doc.doc.noun_chunks, *units[0].doc.doc.ents], start_tokens, start_l, -1)
         
         # Check Ending Item
-        end_tokens = Unit.tokens(units=self.units[lst[-1][0]:lst[-1][1]+1])
+        end_tokens = Unit.tokens(units=units[lst[-1][0]:lst[-1][1]+1])
         if not end_tokens:
             raise Exception
         
@@ -586,8 +704,9 @@ class Lists(Identify):
 
         # Adjust Ending Item
         if set(r_bound).intersection(["ADJ", "NUM", "ADV", *Lists.NOUNS]):
-            end_r = self.expand_noun(end_tokens, end_r, 1)
-    
+            end_r = Lists.expand_noun([*units[0].doc.doc.noun_chunks, *units[0].doc.doc.ents], end_tokens, end_r, 1)
+
+
         # Adjusting Bounds for Start and End Entities
         l_i = start_tokens[start_l].i
         l_labels = set([Unit.ITEM])
@@ -595,8 +714,11 @@ class Lists(Identify):
         r_i = end_tokens[end_r].i
         r_labels = set([Unit.ITEM])
 
-        # Handle Potential Overlap Issues w Enclosures
-        for enclosure in self.enclosures:
+
+        # Handle Potential Overlap Issues with Enclosed
+        # If an item overlaps with an enclosure, it must
+        # consume it.
+        for enclosure in enclosed:
             if not enclosure.label_has([Unit.BRACKETS, Unit.QUOTE]):
                 continue
             
@@ -613,26 +735,35 @@ class Lists(Identify):
                 r_labels.update(enclosure.labels & {Unit.BRACKETS, Unit.QUOTE})
                 r_i = max(enclosure.r, r_i)
       
-        unit_list = Unit(self.doc, labels=Unit.LIST, l=l_i, r=r_i)
 
-        unit_start_item = Unit(self.doc, labels=list(l_labels), l=l_i, r=start_tokens[-1].i)
-        unit_end_item = Unit(self.doc, labels=list(l_labels), l=end_tokens[0].i, r=r_i)
-        unit_list.children.extend([unit_start_item, unit_end_item])
+        # Creating a List
+        # We're finally done.
+        doc = units[0].doc
+        unit_list = Unit(doc, labels=Unit.LIST, l=l_i, r=r_i)
 
+        unit_start_item = Unit(doc, labels=list(l_labels), l=l_i, r=start_tokens[-1].i)
+        unit_end_item = Unit(doc, labels=list(l_labels), l=end_tokens[0].i, r=r_i)
+
+        unit_list.children.append(unit_start_item)
+        
+        # Inner Items
         for item in lst[1:-1]:
-            tokens = Unit.tokens(units=self.units[item[0]:item[1]+1])
+            tokens = Unit.tokens(units=units[item[0]:item[1]+1])
             if not tokens:
                 raise Exception
             
-            unit_item = Unit(self.doc, labels=Unit.ITEM, l=tokens[0].i, r=tokens[-1].i)
+            unit_item = Unit(doc, labels=Unit.ITEM, l=tokens[0].i, r=tokens[-1].i)
             unit_list.children.append(unit_item)
+        
+        unit_list.children.append(unit_end_item)
 
         return unit_list
 
 
     
-    def bound_pair(self, pair):
-        tokens = Unit.tokens(units=self.units[pair[0][0]:pair[0][1]+1])
+    @staticmethod
+    def bound_pair(units: List[Unit], pair, enclosed):
+        tokens = Unit.tokens(units=units[pair[0][0]:pair[0][1]+1])
         if not tokens:
             raise Exception
 
@@ -650,12 +781,10 @@ class Lists(Identify):
 
         # Find L Bound
         l_bound = []
-        l_bound_i = None
         
         for i in range(m + 1, num_tokens):
             if tokens[i].pos_ in speech:
                 l_bound = [tokens[i].pos_]
-                l_bound_i = tokens[i].i
                 break
             # With adjectives, we can also add the following token
             # as a bound. This allows a list like "X and [ADJ] Y"
@@ -677,12 +806,10 @@ class Lists(Identify):
         
         # Find R Bound
         r_bound = []
-        r_bound_i = None
         
         for i in range(m - 1, -1, -1):
             if tokens[i].pos_ in speech:
                 r_bound = [tokens[i].pos_]
-                r_bound_i = tokens[i].i
                 break
             # With adjectives, we can also list the following token
             # as a bound. This allows a list like "X and [ADJ] Y"
@@ -710,9 +837,9 @@ class Lists(Identify):
         if l < 0:
             return None
 
-        # Adjust L if Noun
-        if l_bound in Lists.NOUNS:
-            l = self.expand_noun(tokens, l, -1)
+        # Adjust L, if Noun or Noun-Related
+        if set(l_bound).intersection(["ADJ", "ADV", "NUM", *Lists.NOUNS]):
+            l = Lists.expand_noun([*units[0].doc.doc.noun_chunks, units[0].doc.doc.ents], tokens, l, -1)
         
         # Bound R Item
         r = m + 1
@@ -722,17 +849,19 @@ class Lists(Identify):
         if r >= num_tokens:
             return None
 
-        # Adjust R if Noun
-        if r_bound in Lists.NOUNS:
-            r = self.expand_noun(tokens, r, 1)
+        # Adjust R, if Noun or Noun-Related
+        if set(r_bound).intersection(["ADJ", "ADV", "NUM", *Lists.NOUNS]):
+            r = Lists.expand_noun([*units[0].doc.doc.noun_chunks, units[0].doc.doc.ents], tokens, r, 1)
 
-        # Further Adjusting Bounds for Entities
+
+        # Handling Possible Overlaps with Enclosed Units
         l_i = tokens[l].i
         l_label = {Unit.ITEM}
         
         r_i = tokens[r].i
         r_label = {Unit.ITEM}
-        for ent in self.enclosures:
+
+        for ent in enclosed:
             if not ent.label_has([Unit.BRACKETS, Unit.QUOTE]):
                 continue
             
@@ -750,41 +879,56 @@ class Lists(Identify):
                 r_i = max(ent.r, r_i)
 
         
-        pair = Unit(self.doc, labels=Unit.LIST, l=l_i, r=r_i)
+        doc = units[0].doc
+        pair = Unit(doc, labels=Unit.LIST, l=l_i, r=r_i)
         pair.children.extend([
-            Unit(self.doc, labels=list(l_label), l=l_i, r=m_i-1), 
-            Unit(self.doc, labels=list(r_label), l=m_i+1, r=r_i)
+            Unit(units[0].doc, labels=list(l_label), l=l_i, r=m_i-1), 
+            Unit(units[0].doc, labels=list(r_label), l=m_i+1, r=r_i)
         ])
         
         return pair
 
 
     
-    def bound_lists(self, lists):
+    @staticmethod
+    def bound_lists(units, lists, enclosed, verbose=False):
         bound_lists = []
         
         for lst in lists:
             bound = None
         
             if len(lst) == 1:
-                bound = self.char_bound_pair(lst)
-                if not bound:
-                    bound = self.bound_pair(lst)
+                bound = (
+                    Lists.char_bound_pair(units, lst) or 
+                    Lists.bound_pair(units, lst, enclosed)
+                )
             else:
-                bound = self.char_bound_list(lst)
-                if not bound:
-                    bound = self.bound_list(lst)
-            
+                bound = (
+                    Lists.char_bound_list(units, lst, enclosed) or
+                    Lists.bound_list(units, lst, enclosed)
+                )
+
             if bound:
                 bound_lists.append(bound)
-        # print(f"8. Lists:")
-        # for bound_list in bound_lists:
-        #     print(f"-> {bound_list}")
+
+        if verbose:
+            print(f"8. Lists:")
+            for bound_list in bound_lists:
+                print(f"-> {bound_list}")
+        
         return bound_lists
 
 
     
-    def merge_lists(self, bound_lists):
+    @staticmethod
+    def merge_lists(units: List[Unit], bound_lists, verbose=False):
+        if verbose:
+            print(f"9. IN Units: {[unit.text() for unit in units]}")
+            print(f"9. IN Lists:")
+            for bound_list in bound_lists:
+                print(f"-> {bound_list}")
+
+        
         # Map (L, R) to Unit List
         mapped_bounds = {}
         for lst in bound_lists:
@@ -809,7 +953,10 @@ class Lists(Identify):
             if not overlap:
                 max_coverage.append(bound)
         
-        # Integrate Lists
+
+        # Merge Overlapping Lists
+        # I wish I could remember what this
+        # did.
         for bound in max_coverage:
             l_overlap = None
             l_overlap_i = -1
@@ -818,8 +965,8 @@ class Lists(Identify):
             r_overlap_i = -1
             
             i = 0
-            while i < len(self.units):
-                unit = self.units[i]
+            while i < len(units):
+                unit = units[i]
                 
                 # Overlap w/ Left
                 if not l_overlap and unit.l <= bound[0] <= unit.r:
@@ -840,8 +987,8 @@ class Lists(Identify):
                 raise Exception
             
             if l_overlap.label_has([Unit.BRACKETS, Unit.QUOTE]):
-                self.units = self.units[:l_overlap_i] + self.units[r_overlap_i+1:]
-                self.units.insert(l_overlap_i, mapped_bounds[bound])
+                units = units[:l_overlap_i] + units[r_overlap_i+1:]
+                units.insert(l_overlap_i, mapped_bounds[bound])
                 
                 mapped_bounds[bound].l = min(l_overlap.l, mapped_bounds[bound].l)
                 mapped_bounds[bound].r = max(l_overlap.r, mapped_bounds[bound].r)
@@ -851,25 +998,45 @@ class Lists(Identify):
                     # Add Children
                     l_overlap.r = max(l_overlap.r, mapped_bounds[bound].r)
                     l_overlap.children.append(mapped_bounds[bound])
-                    self.units = self.units[:l_overlap_i+1] + self.units[r_overlap_i+1:]
+                    units = units[:l_overlap_i+1] + units[r_overlap_i+1:]
                 else:
                     # Add Children
                     l_overlap.r = max(l_overlap.r, mapped_bounds[bound].r)
                     l_overlap.children.append(mapped_bounds[bound])
-                    self.units = self.units[:l_overlap_i+1] + self.units[r_overlap_i+1:]
+                    units = units[:l_overlap_i+1] + units[r_overlap_i+1:]
                     
             else:
-                self.units = self.units[:l_overlap_i] + self.units[r_overlap_i+1:]
-                self.units.insert(l_overlap_i, mapped_bounds[bound])
+                units = units[:l_overlap_i] + units[r_overlap_i+1:]
+                units.insert(l_overlap_i, mapped_bounds[bound])
 
-        return self.units
+        if verbose:
+            print(f"9. OUT Units:")
+            for unit in units:
+                print(f"-> {[child.text() for child in unit.children]}")
+            
+        return units
     
 
 
-    
-    def identify(self, sep):
-        lists = self.find_lists(sep)
-        lists = self.clean_lists(lists)
-        lists = self.bound_lists(lists)
-        lists = self.merge_lists(lists)
+    @staticmethod
+    def identify(units: List[Unit], separator: str, enclosed: List[Unit], verbose=False):
+        if verbose:
+            print(f'In: {[unit.text() for unit in units]}\n\n')
+        
+        lists = Lists.find_lists(units, separator=separator, verbose=verbose)
+        lists = Lists.clean_lists(lists, verbose=verbose)
+        lists = Lists.bound_lists(units, lists, enclosed, verbose=verbose)
+        lists = Lists.merge_lists(units, lists, verbose=verbose)
+        lists = [unit for unit in lists if unit.children]
+
+        if verbose:
+            print(f"Out:")
+            for unit in lists:
+                print(f"-> {[child.text() for child in unit.children]}")
+        
         return lists
+
+
+
+    def __new__(cls, units, separator, enclosed, verbose=False):
+        return Lists.identify(units=units, separator=separator, enclosed=enclosed, verbose=verbose)

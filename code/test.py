@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Unit, Units
+from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Lists, Unit, Units
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -188,7 +188,7 @@ class TestGrammar(unittest.TestCase):
             doc = ExtendedDoc(self.nlp(test['input']))
 
             units = Units.initialize_units(doc, doc.sents[0])
-            units = DependentClause(units, separator=',', verbose=True)
+            units = DependentClause(units, separator=',', verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
         
@@ -234,9 +234,88 @@ class TestGrammar(unittest.TestCase):
                 Unit.SEP_PUNCT_AND_OR, 
                 Unit.SEP_PUNCT_CCONJ,
                 Unit.SEP_PUNCT_SCONJ
-            ], verbose=True)
+            ], verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
+    
+
+
+    def test_lists(self):
+        tests = [
+            {
+                'input': 'A, B, and C',
+                'output': ['A', 'B', 'C'],
+            },
+            {
+                'input': 'A and B',
+                'output': ['A', 'B'],
+            },
+            {
+                'input': 'A, B, C, and D',
+                'output': ['A', 'B', 'C', 'D'],
+            },
+            {
+                'input': 'I have an A, B, C, and D',
+                'output': ['an A', 'B', 'C', 'D'],
+            },
+            {
+                'input': 'I have an A, B, C, and D',
+                'output': ['an A', 'B', 'C', 'D'],
+            },
+            {
+                'input': 'To reset the device, press the power button, the volume down key, and the home button simultaneously',
+                'output': ['the power button', 'the volume down key', 'the home button'],
+            },
+            {
+                'input': 'The team consists of two designers, three developers, and a project manager',
+                'output': ['two designers', 'three developers', 'a project manager'],
+            },
+            {
+                'input': 'The report covered sales figures, market trends, and feedback',
+                'output': ['sales figures', 'market trends', 'feedback']
+            },
+            {
+                'input': 'She speaks English, French, and Mandarin fluently.',
+                'output': ['English', 'French', 'Mandarin']
+            },
+            # An improvement that could be made is to have
+            # expand_noun (or, better yet, expand_noun_or_verb)
+            # check for adverbs if it's a verb.
+            {
+                'input': 'She laughed, cried, and laughed again watching the movie',
+                'output': ['laughed', 'cried', 'laughed']
+            },
+            # Likewise, I wouldn't want 'The' to be included
+            # in the list. However, because I'm using noun
+            # chunks and entities to expand a noun, it happens.
+            {
+                'input': 'The red dog and blue cat jumped',
+                'output': ['The red dog', 'blue cat']
+            },
+            {
+                'input': 'The red dog and jumping made her happy',
+                'output': ['The red dog', 'jumping']
+            },
+            {
+                'input': 'Shakespear, Dickens, and Austen are considered pillars of English literature.',
+                'output': ['Shakespear', 'Dickens', 'Austen']
+            },
+            # As you can see, it can be quite
+            # limited in some cases.
+            {
+                'input': 'The committee reviewed a 200-page environmental impact report, three competing proposals from local contractors, and a petition signed by over 2,000 residents before making their decision.',
+                'output': ['a 200-page environmental impact report', 'three competing proposals from local contractors', 'a petition']
+            }
+        ]
+        
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+
+            units = Units.initialize_units(doc, doc.sents[0])
+            units = Separator(units)
+            units = Lists(units, separator=',', enclosed=[], verbose=True)
+
+            self.assertEqual([unit.text() for unit in units[0].children], test['output'])
 
 
 

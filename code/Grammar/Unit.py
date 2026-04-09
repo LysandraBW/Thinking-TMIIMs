@@ -61,8 +61,12 @@ class Unit:
 
     def label_has(self, labels):
         return self.labels.intersection(labels)
+    
 
-
+    def has_label(self, *labels):
+        return self.labels.intersection(labels)
+    
+    
     @staticmethod
     def tokens(*, unit: "Unit | None" = None, units: List["Unit"] | None = None) -> List[Token] | None:
         if units:

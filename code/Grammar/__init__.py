@@ -6,4 +6,5 @@ from .Separator import *
 from .DependentClause import *
 from .PrepositionalPhrase import *
 from .IndependentClause import *
+from .Lists import *
 from .Unit import *

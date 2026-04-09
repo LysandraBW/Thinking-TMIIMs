@@ -68,7 +68,7 @@ class DependentClause:
         cond_2 = lower[0] == separator
         cond_3 = lower in DependentClause.RELATIVE_NOUNS
         cond_4 = noun_seen and speech == 'VERB' and not list(units[i].start().rights)
-        cond_5 = verb_seen and DependentClause.is_last_noun(units, i, verbose=True)
+        cond_5 = verb_seen and DependentClause.is_last_noun(units, i, verbose=verbose)
         cond_6 = units[i].label_has([Unit.SEP_SCONJ, Unit.SEP_PUNCT_SCONJ])
 
         if verbose:
