@@ -223,54 +223,43 @@ class Identify:
 
 
     @staticmethod
-    def units_at_i(unit_map: Dict[Tuple[int, int], Unit], i: int):
+    def units_at_i(unit_map: Dict[Tuple[int, int], Unit], i: int) -> List[Unit]:
         units = []
         for k, v in unit_map.items():
             if k[0] <= i <= k[1]:
                 units.append(v)
         return units
-
+    
 
 
     @staticmethod
-    def collapse_units(doc: ExtendedDoc, unit_map: Dict[Tuple[int, int], Unit], labels: List[int] = [Unit.LIST]):
-        unit_bounds = [k for k, v in unit_map.items() if not v.label_has([Unit.ITEM])]
-        distinct_unit_bounds = Identify.distinct_bounds(unit_bounds, larger=False)
+    def units_left_of_i(unit_map: Dict[Tuple[int, int], Unit], i: int, ignore: List[int] | None = None) -> Unit | None:
+        units: List[Unit] = []
+        for k, v in unit_map.items():
+            if k[1] <= i:
+                units.append(v)
+
+        if ignore:
+            units = [unit for unit in units if unit.has_label(*ignore)]
         
-        units = [unit[1] for unit in unit_map.items() if unit[0] in distinct_unit_bounds]
-        units = sorted(units, key=lambda unit: unit.l)
+        units = sorted(units, key=lambda unit: unit.r, reverse=True)
+        return units[0]
+
+    
+
+    @staticmethod
+    def units_right_of_i(unit_map: Dict[Tuple[int, int], Unit], i: int, ignore: List[int] | None = None) -> Unit | None:
+        units: List[Unit] = []
+        for k, v in unit_map.items():
+            if k[0] >= i:
+                units.append(v)
+
+        if ignore:
+            units = [unit for unit in units if unit.has_label(*ignore)]
         
-        tokens: List[Token] = []
-        units_tokens: List[List[Token]] = []
-        
-        i = 0
-        while i < len(units):
-            curr = units[i]
-            tokens.extend([*curr.span()])
-
-            next = None if i + 1 >= len(units) else units[i+1]
-
-            if next and next.label_has(labels):
-                i += 1
-                continue
-
-            if units_tokens:
-                l = units_tokens[-1][-1].i
-                r = tokens[0].i
-
-                if r - l > 1:
-                    units_tokens[-1].extend(list(doc.doc[l+1:r]))
-            
-            units_tokens.append(tokens)
-            tokens = []
-            
-            i += 1
-
-        if tokens:
-            units_tokens.append(tokens)
-
-        return units_tokens
-
+        units = sorted(units, key=lambda unit: unit.r)
+        return units[0]
+    
 
 
     @staticmethod
@@ -282,129 +271,3 @@ class Identify:
     @staticmethod
     def a_overlaps_b(a: Tuple[int, int], b: Tuple[int, int]):
         return a[0] <= b[0] <= a[1] or a[0] <= b[1] <= a[1]
-
-
-
-    @staticmethod
-    def collapse_units_by_token(doc, units):
-        # Split Tokens
-        split_tokens = []
-        tokens = [] # Running List of Tokens
-        
-        i = 0
-        num_tokens = len(doc)
-        
-        while i < num_tokens:
-            token = doc[i]
-
-            # Case 1: End of Sentence (.)
-            end_of_sentence_1 = token.i == token.sent.end - 1 and token.pos_ == "PUNCT"
-            end_of_sentence_2 = i + 1 < num_tokens and doc[i+1].sent.start != token.sent.start
-
-            if end_of_sentence_1 or end_of_sentence_2:
-                if tokens:
-                    split_tokens.append(tokens)
-                tokens = []
-            
-
-            # Case 2: Comma (,), Semicolon (;), Colon (:), Conjunction (AND/OR)
-            elif token.lower_[0] in ",;:" or token.pos_ == "CCONJ":
-                t_units = units.units_at_i(token.i)
-                unit_lists = [unit for unit in t_units if unit.label_has([Unit.LIST])]
-
-                if unit_lists:
-                    tokens.append(token)
-                    i += 1
-                else:
-                    unit_breaks = [unit for unit in t_units if unit.label_ in [Unit.SEP_PUNCT_CCONJ, Unit.SEP_PUNCT_SCONJ, Unit.SEP_PUNCT, Unit.COLON_BREAK]]
-                    if tokens:
-                        split_tokens.append(tokens)
-                    
-                    tokens = []
-        
-                    if unit_breaks:
-                        unit = unit_breaks[0]
-                        i += unit.r - unit.l + 1
-                    else:
-                        i += 1
-                
-                continue
-                
-            
-            # Case 3: Regular Token
-            else:
-                t_units = units.units_at_i(token.i)
-
-                split = False
-                cont_loop = False
-                
-                for unit in t_units:
-                    if unit.label_has([Unit.I_CLAUSE, Unit.D_CLAUSE]) and token.i == unit.l:
-                        if tokens:
-                            split_tokens.append(tokens)
-                        tokens = [token]
-                        split = True
-                    elif unit.label_has([Unit.BRACKETS]):
-                        i += unit.r - unit.l + 1
-                        split_tokens.append([*unit.span()])
-                        split = True
-                        cont_loop = True
-                    elif unit.label_has([Unit.P_PHRASE]) and (unit.start().pos_ == "SCONJ" or not tokens):
-                        i += unit.r - unit.l + 1
-                        split_tokens.append([*unit.span()])
-                        split = True
-                        cont_loop = True
-                
-                # We can't continue the while-loop
-                # from the for-loop.
-                if cont_loop:
-                    continue
-
-                if not split:
-                    tokens.append(token)
-            
-            i += 1
-        
-
-        if tokens:
-            split_tokens.append(tokens)
-
-
-        return split_tokens
-    
-
-
-    @staticmethod
-    def distinct_bounds(bounds: List[Tuple[int, int]], larger=True):
-        dounds = []
-        
-        for bound in bounds:
-            impure = False
-            
-            for i, dound in enumerate(dounds):    
-                surround = Identify.a_contains_b(bound, dound)
-                contains = Identify.a_contains_b(dound, bound)
-                overlaps = Identify.a_overlaps_b(bound, dound)
-
-                impure = surround or contains or overlaps
-
-                if overlaps:
-                    d_length = dound[1] - dound[0]
-                    b_length = bound[1] - bound[0]
-                    dounds[i] = dound if d_length >= b_length else bound
-                elif larger:
-                    if surround:
-                        dounds[i] = bound
-                    elif contains:
-                        dounds[i] = dound
-                else:
-                    if surround:
-                        dounds[i] = dound
-                    elif contains:
-                        dounds[i] = bound
-
-            if not impure:
-                dounds.append(bound)
-
-        
-        return list(set(dounds))
