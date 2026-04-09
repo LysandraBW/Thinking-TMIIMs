@@ -114,12 +114,6 @@ class Lists:
                 if unit.lower() in Lists.CLOSING:
                     if stack and Lists.ENCLOSED[stack[-1]] == unit.lower():
                         stack.pop()
-                    # There was or is an issue where an extracted
-                    # list ignored the parenthesis that obviously
-                    # made it invalid. For example, it would recognize
-                    # Bob) and cat as a list. I haven't really tested
-                    # whether it's fixed or not, but this was the quick
-                    # addition I made.
                     else:
                         invalid = True
             
