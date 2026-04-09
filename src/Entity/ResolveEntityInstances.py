@@ -30,9 +30,9 @@ class Entity(TypedDict):
 
 
 class ResolveEntityInstances:
-    def __init__(self, doc: ExtendedDoc) -> None:
+    def __init__(self, doc: ExtendedDoc, conn: sqlite3.Connection) -> None:
         self.doc = doc
-        self.conn = connect()
+        self.conn = conn
     
 
     def find_substitutions(self, ents: List[Span]) -> Dict[str, List[str]]:

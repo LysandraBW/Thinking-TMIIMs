@@ -183,6 +183,34 @@ def load_all_names(scientifics, vernaculars, roles):
 
 
 
+# ----------------- #
+# Load Interactions #
+# ----------------- #
+def load_interactions():
+    with open(Path(__file__).parent / '../../data/hard/interaction.json') as f:
+        words = set(json.load(f))
+        interactions = ahocorasick.Automaton()
+        for word in words:
+            interactions.add_word(word, word)    
+        interactions.make_automaton()
+        return interactions
+
+
+
+# ------------ #
+# Load Actions #
+# ------------ #
+def load_actions():
+    with open(Path(__file__).parent / '../../data/hard/actions.json') as f:
+        words = set(json.load(f))
+        actions = ahocorasick.Automaton()
+        for word in words:
+            actions.add_word(word, word)    
+        actions.make_automaton()
+        return actions
+
+
+
 # --------- #
 # Load Data #
 # --------- #
@@ -204,6 +232,16 @@ print(f'# of Scientific Groups: {len(scientifics)}\n')
 print('Loading Roles...')
 roles = load_roles()
 print(f'# of Roles: {len(roles)}\n')
+
+
+print('Loading Interactions...')
+interactions = load_interactions()
+print(f'# of Interactions: {len(interactions)}\n')
+
+
+print('Loading Actions...')
+actions = load_actions()
+print(f'# of Actions: {len(actions)}\n')
 
 
 print('Loading All Names...')
