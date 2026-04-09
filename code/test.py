@@ -1,7 +1,7 @@
 import spacy
 import unittest
 from ExtendedDoc import *
-from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Lists, Unit, Units
+from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Lists, Identify, Unit
 
 class TestGrammar(unittest.TestCase):
     nlp = spacy.load("en_core_web_sm")
@@ -35,7 +35,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Bracket(units, verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
@@ -61,7 +61,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Quote(units, verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
@@ -87,7 +87,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Colon(units, verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
@@ -106,7 +106,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Separator(units, verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output_text'])
@@ -145,7 +145,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = PrepositionalPhrase(units, verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
@@ -187,7 +187,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = DependentClause(units, separator=',', verbose=False)
 
             self.assertEqual([unit.text() for unit in units], test['output'])
@@ -225,7 +225,7 @@ class TestGrammar(unittest.TestCase):
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Separator(units)
             units = IndependentClause(units, delimiters=[
                 Unit.SEP_SCONJ,
@@ -305,17 +305,42 @@ class TestGrammar(unittest.TestCase):
             {
                 'input': 'The committee reviewed a 200-page environmental impact report, three competing proposals from local contractors, and a petition signed by over 2,000 residents before making their decision.',
                 'output': ['a 200-page environmental impact report', 'three competing proposals from local contractors', 'a petition']
+            },
+            {
+                'input': 'The study found that participants who regularly consumed dark leafy greens, foods high in omega-3 fatty acids, and fermented dairy products had significantly lower inflammation markers.',
+                'output': ['dark leafy greens', 'foods high in omega-3 fatty acids', 'fermented dairy products']
             }
         ]
         
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
 
-            units = Units.initialize_units(doc, doc.sents[0])
+            units = Identify.init_units(doc, doc.sents[0])
             units = Separator(units)
-            units = Lists(units, separator=',', enclosed=[], verbose=True)
+            units = Lists(units, separator=',', enclosed=[], verbose=False)
 
             self.assertEqual([unit.text() for unit in units[0].children], test['output'])
+    
+
+    def test(self):
+        tests = [
+            {
+                'input': 'This is an independent clause, but this is also an independent clause with a dependent clause.',
+                'output': {
+                    'tags': [{Unit.I_CLAUSE}, {Unit.SEP_PUNCT_CCONJ}, {Unit.I_CLAUSE}, {Unit.D_CLAUSE}, {Unit.FRAGMENT}],
+                    'text': ['This is an independent clause', ',but', 'this is also an independent clause', 'with a dependent clause', '.']
+                }
+            }
+        ]
+
+        for test in tests:
+            doc = ExtendedDoc(self.nlp(test['input']))
+            
+            units = Identify(doc, verbose=True)
+            self.assertEqual(len(units), len(test['output']['tags']))
+            self.assertEqual([unit.labels for unit in units.values()], test['output']['tags'])
+            self.assertEqual([unit.text() for unit in units.values()], test['output']['text'])
+
 
 
 

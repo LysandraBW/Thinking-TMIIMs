@@ -922,6 +922,10 @@ class Lists:
     
     @staticmethod
     def merge_lists(units: List[Unit], bound_lists, verbose=False):
+        # My method for identifying overlapping bounds or
+        # finding the max coverage is probably flawed. I did
+        # not do a proof or test it.
+
         if verbose:
             print(f"9. IN Units: {[unit.text() for unit in units]}")
             print(f"9. IN Lists:")
