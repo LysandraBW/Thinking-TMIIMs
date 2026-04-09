@@ -1,11 +1,11 @@
 from typing import Any, Set, Dict, TypedDict, List, cast
 from spacy.tokens import Span
-from ExtendedDoc import *
-from text import *
-from names import *
-from tokens import *
-from inflections import *
-from inflections_latin import *
+from .ExtendedDoc import *
+from .text import *
+from .names import *
+from .tokens import *
+from .inflections import *
+from .inflections_latin import *
 from nltk.stem import PorterStemmer, SnowballStemmer, LancasterStemmer
 
 

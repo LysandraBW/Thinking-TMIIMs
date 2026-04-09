@@ -9,7 +9,7 @@ from .Colon import *
 from .PrepositionalPhrase import *
 from .Quote import *
 from .Separator import *
-from ExtendedDoc import *
+from Entity.ExtendedDoc import *
 
 
 class Identify:

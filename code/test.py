@@ -1,6 +1,6 @@
 import spacy
 import unittest
-from ExtendedDoc import *
+from Entity import ExtendedDoc
 from Grammar import Bracket, Quote, Colon, Separator, PrepositionalPhrase, DependentClause, IndependentClause, Lists, Identify, Unit
 
 class TestGrammar(unittest.TestCase):

@@ -1,6 +1,6 @@
 from typing import List, Set
 from more_itertools import collapse
-from ExtendedDoc import *
+from Entity.ExtendedDoc import *
 
 class Unit:
     LIST = 1

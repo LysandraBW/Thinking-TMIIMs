@@ -6,15 +6,17 @@ import sqlite3
 import ahocorasick
 import pandas as pd
 from typing import Any, Callable
-from names_patterns import *
-from inflections import *
+from .names_patterns import *
+from .inflections import *
+from pathlib import Path
 
-conn = sqlite3.connect('../../data/COL.db')
+
+conn = sqlite3.connect(Path(__file__).parent / '../../data/col.db')
 # conn.execute("ANALYZE NameUsage")
 # conn.execute("PRAGMA cache_size = -1000000")
 
 
-def load_data(path: str, load: Callable[[], Any], *, force: bool = False) -> Any:
+def load_data(path: str | Path, load: Callable[[], Any], *, force: bool = False) -> Any:
     data = None
     if not force and os.path.exists(path):
         with open(path, "rb") as file:
@@ -97,7 +99,7 @@ def load_vernaculars():
     names = set().union(*names)
 
     # Add More Names from File
-    with open('../../data/manual/vernaculars.json') as f:
+    with open(Path(__file__).parent / '../../data/hard/vernaculars.json') as f:
         names = names | set(json.load(f))
     
     return names
@@ -142,7 +144,7 @@ def load_mapped_names():
 # ---------- #
 def load_roles():
     roles = None
-    with open('../../data/manual/roles.json') as f:
+    with open(Path(__file__).parent / '../../data/hard/roles.json') as f:
         roles = set(json.load(f))
     return roles
 
@@ -184,28 +186,33 @@ def load_all_names(scientifics, vernaculars, roles):
 # --------- #
 # Load Data #
 # --------- #
-mapped_names = load_data("../../data/NamesMapped.pickle", load_mapped_names, force=False)
-print(f'# of Mapped Names: {len(mapped_names)}')
+print('Loading Mapped Names...')
+mapped_names = load_data(Path(__file__).parent / "../../data/NamesMapped.pickle", load_mapped_names, force=False)
+print(f'# of Mapped Names: {len(mapped_names)}\n')
 
 
-vernaculars = load_data("../../data/Vernaculars.pickle", load_vernaculars, force=True)
-print(f'# of Vernacular Names: {len(vernaculars)}')
+print('Loading Vernaculars...')
+vernaculars = load_data(Path(__file__).parent / "../../data/Vernaculars.pickle", load_vernaculars, force=False)
+print(f'# of Vernacular Names: {len(vernaculars)}\n')
 
 
-scientifics = load_data("../../data/Scientifics.pickle", load_scientifics, force=False)
-print(f'# of Scientific Groups: {len(scientifics)}')
+print('Loading Scientfics...')
+scientifics = load_data(Path(__file__).parent / "../../data/Scientifics.pickle", load_scientifics, force=False)
+print(f'# of Scientific Groups: {len(scientifics)}\n')
 
 
+print('Loading Roles...')
 roles = load_roles()
-print(f'# of Roles: {len(roles)}')
+print(f'# of Roles: {len(roles)}\n')
 
 
-all_names = load_data("./db/NamesAll.pickle", lambda: load_all_names(
+print('Loading All Names...')
+all_names = load_data(Path(__file__).parent / "../../data/NamesAll.pickle", lambda: load_all_names(
     roles=roles,
     scientifics=scientifics, 
     vernaculars=vernaculars
-), force=True)
-print(f'# of Names: {len(all_names)}')
+), force=False)
+print(f'# of Names: {len(all_names)}\n')
 
 
 

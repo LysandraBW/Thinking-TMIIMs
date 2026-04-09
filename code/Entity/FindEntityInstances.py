@@ -1,11 +1,11 @@
 from typing import Any, Set, Tuple
 from spacy.tokens import Span
 from spacy.util import filter_spans
-from ExtendedDoc import ExtendedDoc
-from text import *
-from names import *
-from tokens import *
-from inflections import *
+from .ExtendedDoc import ExtendedDoc
+from .text import *
+from .names import *
+from .tokens import *
+from .inflections import *
 
 
 class FindEntityInstances:
@@ -226,6 +226,7 @@ class FindEntityInstances:
         merged = ents and [ents[0]]
         for curr in ents[1:]:
             prev = merged[-1]
+            
             if prev.end >= curr.start:
                 end = max(prev.end, curr.end)
                 merged[-1] = self.doc.doc[prev.start:end]
