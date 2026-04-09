@@ -18,7 +18,8 @@ class PrepositionalPhrase:
             units[i].start().pos_ not in [
                 "NOUN", 
                 "PROPN", 
-                "PRON"
+                "PRON",
+                "DET"
             ]
         ):
             return False
@@ -37,12 +38,23 @@ class PrepositionalPhrase:
 
 
     @staticmethod
-    def is_end(units: List[Unit], i: int):
+    def is_end(units: List[Unit], i: int, verbose=False):    
+        if i + 1 >= len(units):
+            return True
+        
+        if verbose:
+            print(f"\tis_end: Unit's Labels: {units[i].labels_}")
+            print(f"\tis_end: Unit's Range: {units[i].l}, {units[i].r}")
+            tokens = units[i].span()
+            if tokens:
+                print(f"\tis_end: Last Token's PoS: {tokens[-1].pos_}")
+        
+        if units[i].has_label(Unit.LIST) and (tokens := units[i].span()):
+            if tokens[-1].pos_ in ["NOUN", "PROPN", "PRON"]:
+                return True
+
         return bool(
-            # 1. End of List
-            i + 1 >= len(units) or
-            
-            # 2. Clause
+            # Clause
             units[i+1].label_has([
                 Unit.COLON,
                 Unit.COLON_BREAK,
@@ -54,7 +66,7 @@ class PrepositionalPhrase:
                 Unit.SEP_PUNCT_CCONJ
             ]) or
             
-            # 3. Noun
+            # Last Noun
             PrepositionalPhrase.is_last_noun(units, i)
         )
 
@@ -97,19 +109,19 @@ class PrepositionalPhrase:
             # bracket or quotation, since those characters/tokens
             # are left in the unit?
             # I'm going to comment it out to see.
-            # noun_seen = False
+            noun_seen = False
             # TODO
-            while not PrepositionalPhrase.is_end(units, i+1):
-                # noun_seen = noun_seen or units[i+1].start().pos_ in [
-                #     "NOUN", 
-                #     "PROPN", 
-                #     "PRON"
-                # ]
+            while not PrepositionalPhrase.is_end(units, i + 1, verbose=verbose):
+                noun_seen = noun_seen or units[i+1].start().pos_ in [
+                    "NOUN", 
+                    "PROPN", 
+                    "PRON"
+                ]
 
                 # Add Child
                 if units[i+1].label_has([Unit.BRACKETS, Unit.QUOTE]):
-                    # if noun_seen:
-                    #     break
+                    if noun_seen:
+                        break
                     units[i].children.append(units[i+1])
                 
                 units[i].r = units[i+1].r
@@ -118,8 +130,7 @@ class PrepositionalPhrase:
             # This block determines whether we should
             # add the end to the clause's tokens.
             if bool(
-                    units[i+1].size() == 1 and 
-                    units[i+1].span()[0].pos_ in ["NOUN", "PROPN", "PRON", "ADJ", "VERB"] and 
+                    set([token.pos_ for token in units[i+1].span()]).intersection(["NOUN", "PROPN", "PRON", "ADJ", "VERB", "DET"]) and 
                     units[i+1].lower() not in DependentClause.RELATIVE_NOUNS
                 ):
                 units[i].r = units[i+1].r

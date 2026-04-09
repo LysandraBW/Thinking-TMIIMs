@@ -2,10 +2,10 @@ import string
 from typing import Dict, Tuple
 from .Unit import *
 from .Bracket import *
-from .Colon import *
 from .DependentClause import *
 from .IndependentClause import *
 from .Lists import *
+from .Colon import *
 from .PrepositionalPhrase import *
 from .Quote import *
 from .Separator import *
@@ -131,9 +131,15 @@ class Identify:
             if verbose:
                 print(f'3. Colons: {[unit.text() for unit in units]}')
 
+        # I've moved this up here, because shouldn't a
+        # clause know when a noun is a list?
+        units = Lists(units, separator=sep, enclosed=enclosed)
+        if verbose:
+            print(f'7. Lists: {[unit.text() for unit in units]}')
+        
 
         if load_clauses:
-            units = PrepositionalPhrase(units)
+            units = PrepositionalPhrase(units, verbose=False)
             if verbose:
                 print(f'4. Prepositional Phrases: {[unit.text() for unit in units]}')
 
@@ -141,23 +147,21 @@ class Identify:
             if verbose:
                 print(f'5. Dependent Clauses: {[unit.text() for unit in units]}')
 
-            units = IndependentClause(units, delimiters=[Unit.SEP_PUNCT_CCONJ, Unit.SEP_PUNCT_SCONJ, Unit.SEP_CCONJ, Unit.SEP_SCONJ])
+            units = IndependentClause(units, delimiters=[Unit.SEP_PUNCT_CCONJ, Unit.SEP_PUNCT_SCONJ, Unit.SEP_CCONJ, Unit.SEP_SCONJ, Unit.SEP_PUNCT, Unit.SEP_PUNCT_AND_OR])
             if verbose:
                 print(f'6. Independent Clauses: {[unit.text() for unit in units]}')
-        
-        units = Lists(units, separator=sep, enclosed=enclosed)
-        if verbose:
-            print(f'7. Lists: {[unit.text() for unit in units]}')
         
         # There is some overlap between lists and independent
         # clauses because they both can use ", [AND/OR]", but
         # after the lists are identified, we can assume the
         # remaining ", [AND/OR]" are parts of independent 
         # clauses.
-        if load_clauses:
-            units = IndependentClause(units, delimiters=[Unit.SEP_PUNCT, Unit.SEP_PUNCT_AND_OR])
-            if verbose:
-                print(f'8. Independent Clauses: {[unit.text() for unit in units]}')
+        # Since the lists are already loaded, we can use whichever
+        # delimiter.
+        # if load_clauses:
+        #     units = IndependentClause(units, delimiters=[Unit.SEP_PUNCT_CCONJ, Unit.SEP_PUNCT_SCONJ, Unit.SEP_CCONJ, Unit.SEP_SCONJ, Unit.SEP_PUNCT, Unit.SEP_PUNCT_AND_OR])
+        #     if verbose:
+        #         print(f'8. Independent Clauses: {[unit.text() for unit in units]}')
 
         # Merge Ungrouped Entities
         i = 0

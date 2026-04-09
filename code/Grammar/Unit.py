@@ -46,7 +46,7 @@ class Unit:
         span = self.span()
         return self.doc.text_lower[span.start_char:span.end_char]
 
-
+    
     def start(self):
         return self.doc.doc[self.l]
 
@@ -66,7 +66,7 @@ class Unit:
     def has_label(self, *labels):
         return self.labels.intersection(labels)
     
-    
+
     @staticmethod
     def tokens(*, unit: "Unit | None" = None, units: List["Unit"] | None = None) -> List[Token] | None:
         if units:

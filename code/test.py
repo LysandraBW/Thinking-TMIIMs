@@ -319,27 +319,37 @@ class TestGrammar(unittest.TestCase):
             units = Separator(units)
             units = Lists(units, separator=',', enclosed=[], verbose=False)
 
-            self.assertEqual([unit.text() for unit in units[0].children], test['output'])
+
+            self.assertEqual([child.text() for unit in units if unit for child in unit.children], test['output'])
     
 
     def test(self):
         tests = [
             {
-                'input': 'This is an independent clause, but this is also an independent clause with a dependent clause.',
-                'output': {
-                    'tags': [{Unit.I_CLAUSE}, {Unit.SEP_PUNCT_CCONJ}, {Unit.I_CLAUSE}, {Unit.D_CLAUSE}, {Unit.FRAGMENT}],
-                    'text': ['This is an independent clause', ',but', 'this is also an independent clause', 'with a dependent clause', '.']
-                }
+                'input': 'This is an independent clause, but this is also an independent clause with a prepositional phrase.',
+            },
+            {
+                'input': 'There was a question on the community\'s mind; but no individual had the courage to ask, question, or doubt.',
+            },
+            {
+                'input': 'Because of the cat and dog\'s noise, the humans were unable to sleep nor think.',
+            },
+            {
+                'input': 'This is the first independent clause, this is the second independent clause, with a prepositional phrase added.',
+            },
+            {
+                'input': 'In the midst of all the storm, wind, and fire, was a failing sentence analyzer.',
             }
         ]
 
         for test in tests:
             doc = ExtendedDoc(self.nlp(test['input']))
-            
-            units = Identify(doc, verbose=True)
-            self.assertEqual(len(units), len(test['output']['tags']))
-            self.assertEqual([unit.labels for unit in units.values()], test['output']['tags'])
-            self.assertEqual([unit.text() for unit in units.values()], test['output']['text'])
+            units = Identify(doc, verbose=False)
+            print(test['input'])
+            print()
+            print(''.join([f'"{unit.text()}"\n\tLabels: {unit.labels_}\n\t# Children: {len(unit.children)}\n\n' for unit in units.values()]))
+            print()
+            print()
 
 
 

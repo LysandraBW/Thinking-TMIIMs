@@ -1031,7 +1031,7 @@ class Lists:
         lists = Lists.clean_lists(lists, verbose=verbose)
         lists = Lists.bound_lists(units, lists, enclosed, verbose=verbose)
         lists = Lists.merge_lists(units, lists, verbose=verbose)
-        lists = [unit for unit in lists if unit.children]
+        # lists = [unit for unit in lists if unit.children]
 
         if verbose:
             print(f"Out:")
